@@ -13,7 +13,10 @@ from queries import *
 def conf_setup():
     conf = SparkConf()
     conf.setAppName("tpch")
-    conf.set("spark.driver.memory", "8g")
+    conf.set("spark.driver.memory", spark_memory)
+    if cbo:
+        conf.set("spark.sql.cbo.enabled", "true")
+
     spark_session = SparkSession.builder.config(conf=conf).getOrCreate()
 
     spark_context = spark_session.sparkContext
@@ -146,6 +149,8 @@ def run_query(query, sc, query_name, result_path, open_mode='w+'):
     with result_file.open(open_mode) as f:
         start = time()
         query_result = sc.sql(query)
+        # query_result.explain("cost")
+        query_result.explain("formatted")
         end = time()
 
         for idx, d in enumerate(query_result.collect()):
@@ -164,14 +169,23 @@ def run_query(query, sc, query_name, result_path, open_mode='w+'):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--query', '-q', type=str, required=True, help='indicate TPC-H query id')
-    parser.add_argument('--data_path', '-d', type=str, required=True, help='indicate generated TPC-H dataset')
-    parser.add_argument('--results_path', '-r', type=str, required=True, help='indicate the output of TPC-H ')
+    parser.add_argument('--query', '-q', type=str, required=True,
+                        help='indicate TPC-H query id')
+    parser.add_argument('--data_path', '-d', type=str, required=True,
+                        help='indicate generated TPC-H dataset')
+    parser.add_argument('--results_path', '-r', type=str, required=True,
+                        help='indicate the output of TPC-H ')
+    parser.add_argument('--memory_allocation', '-ma', type=str, required=True, default="8g",
+                        help='indicate if cost-based optimizer is enable or not')
+    parser.add_argument('--cbo_enable', '-cbo', action="store_true",
+                        help='indicate if cost-based optimizer is enable or not')
     args = parser.parse_args()
 
     query_id = args.query
     data_path = args.data_path
     results_path = args.results_path
+    spark_memory = args.memory_allocation
+    cbo = args.cbo_enable
 
     spark_sess, spark_ctx = conf_setup()
 
