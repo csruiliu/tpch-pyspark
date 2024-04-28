@@ -111,8 +111,11 @@ def read_table(spark_session, spark_context):
                                          str(l[2])])
 
     df_lineitem = spark_session.createDataFrame(lineitem, lineitem_schema)
-    df_lineitem.registerTempTable("lineitem")
-    df_lineitem.cache().count()
+
+    df_lineitem.write.saveAsTable("lineitem")
+    spark_session.sql("ANALYZE TABLE lineitem COMPUTE STATISTICS")
+    # df_lineitem.registerTempTable("lineitem")
+    # df_lineitem.cache().count()
 
     df_part = spark_session.createDataFrame(part, part_schema)
     df_part.registerTempTable("part")
@@ -148,9 +151,10 @@ def run_query(query, sc, query_name, result_path, open_mode='w+'):
 
     with result_file.open(open_mode) as f:
         start = time()
+        sc.sql("ANALYZE TABLE lineitem COMPUTE STATISTICS")
         query_result = sc.sql(query)
-        # query_result.explain("cost")
-        query_result.explain("formatted")
+
+        query_result.explain("cost")
         end = time()
 
         for idx, d in enumerate(query_result.collect()):
